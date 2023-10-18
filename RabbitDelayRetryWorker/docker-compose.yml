@@ -1,0 +1,40 @@
+version: '3.4'
+
+services:
+  rabbitdelayretryworker:
+    image: ${DOCKER_REGISTRY-}rabbitdelayretryworker
+    container_name: worker
+    build:
+      context: .
+      dockerfile: RabbitDelayRetryWorker/Dockerfile
+    depends_on:
+      - rabbitmq
+    networks: 
+      - network
+
+  rabbitmq:    
+    container_name: rabbitmq
+    build:
+      context: ./rabbitmq
+      dockerfile: Dockerfile
+    environment:
+      RABBITMQ_DEFAULT_VHOST: main
+      RABBITMQ_DEFAULT_USER: mc
+      RABBITMQ_DEFAULT_PASS: mc2
+    ports:
+      - 15672:15672
+    networks: 
+      - network
+
+  redis:
+    image: redis/redis-stack-server:6.2.6-v9
+    container_name: redis    
+    environment:      
+      REDIS_ARGS: --requirepass admin1234567890
+    ports:
+      - 6379:6379    
+    networks:
+      - network
+
+networks:
+  network:    
