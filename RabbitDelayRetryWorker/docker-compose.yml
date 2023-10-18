@@ -9,6 +9,7 @@ services:
       dockerfile: RabbitDelayRetryWorker/Dockerfile
     depends_on:
       - rabbitmq
+      - redis
     networks: 
       - network
 

@@ -40,8 +40,6 @@ namespace RabbitDelayRetryWorker
             });
             _model.QueueBind("order", "order", "create");
 
-            using PeriodicTimer Timer = new(TimeSpan.FromSeconds(1));
-
             AsyncEventingBasicConsumer consumer = new(_model);
 
             consumer.Received += async (object _, BasicDeliverEventArgs eventArgs) =>
@@ -55,11 +53,12 @@ namespace RabbitDelayRetryWorker
                 try
                 {
                     bool Lock = false;
+                    using PeriodicTimer Delay = new(TimeSpan.FromSeconds(1));
 
                     do
                     {
                         Lock = await Cache.KeyExistsAsync(eventArgs.BasicProperties.MessageId);
-                        await Timer.WaitForNextTickAsync(cancellationToken);
+                        await Delay.WaitForNextTickAsync(cancellationToken);
                     } while (Lock);
 
                     throw new Exception("Um erro ocorreu");
@@ -73,6 +72,16 @@ namespace RabbitDelayRetryWorker
             };
 
             _model.BasicConsume("order", false, consumer);
+
+            //Publish Message
+            IBasicProperties Props = _model.CreateBasicProperties();
+            Props.DeliveryMode = 2;
+            Props.ContentType = "application/json";
+            Props.MessageId = Guid.NewGuid().ToString();
+
+            _model.BasicPublish("order", "create", Props, null);
+
+            using PeriodicTimer Timer = new(TimeSpan.FromSeconds(1));
 
             while (!cancellationToken.IsCancellationRequested) await Timer.WaitForNextTickAsync(cancellationToken);
         }
